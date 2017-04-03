@@ -1,0 +1,176 @@
+<html>
+<head>
+<style>
+/* Framework */
+	#graph {
+		border: 1px solid gray;
+		margin: 5px;
+	}
+	#keys {
+		border: 1px solid gray;
+		display: inline-block;
+		min-height: 20px;
+		margin: 5px;
+		width: 200px;
+		vertical-align: top;
+	}
+	#bars {
+		border: 1px solid gray;
+		margin: 5px;
+		display: inline-block;
+		min-height: 20px;
+		min-width: 600px;
+		width: auto;
+		position: absolute;
+	}
+
+/* Chart Display */
+	.key {
+		color: blue;
+		display: block;
+		height: 40px;
+		width: 20px;
+		vertical-align: middle;
+	}
+	.bar {
+		background-color: lightblue;
+		display: inline-block;
+		height: 30px;
+		margin: 5px;
+	}
+	.max-bar {
+		background-color: red !important;
+	}
+</style>
+
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+<script>
+
+// generate a hash table linking each word to # of occurrences of that word
+// words are separted by ' ', don't contain ' ' themselves
+// ex. 'i like pizza and apples and pizza pizza'
+function generate_hash(str, order) {
+	var h = {};
+	str = str.toLowerCase();		       // lowercase
+	str = str.replace(/[,\.!?()]/g, ' ');  // remove special chars.
+										   // use replace to avoid accidentally gluing two words
+										   // separated by a special char - ex. "this,is,fun" is 3 words
+    var str_arr = str.split(' ');	       // ['i', 'like', 'pizza' ...]
+	str_arr = str_arr.filter(function (word) {	// exclude instances of ''
+		return word != '';
+	});
+
+	// build the hash
+    for (var i in str_arr) {
+		var c = str_arr[i];
+        if (str_arr.indexOf(str_arr[i]) == i) h[c] = 1;		// check for uniqueness
+        else h[c]++;
+    }
+
+	// reorder the hash
+	if (order != 'default') {
+		var keys = Object.keys(h);
+		var h_new = {};
+
+		if (order == 'a-z') keys.sort();
+		else if (order == 'z-a') keys.sort().reverse();
+		else if (order == 'min-max') {
+			keys.sort(function(a, b) {
+				return h[a] - h[b];
+			});
+		}
+		else if (order == 'max-min') {
+			keys.sort(function(a, b) {
+				return h[b] - h[a];
+			});
+		}
+
+		for (var i in keys) {
+			var key = keys[i];
+			var val = h[key];
+			h_new[key] = val;
+		}
+		h = h_new;
+	}
+	
+	return h;
+}
+
+// loop through hash to find the key w/ greatest value
+function most_common_word(h) {
+    var keys = Object.keys(h);
+    var max = 0;
+    var mcw = ''; // most common character
+    for (var i in keys) {   // ex. 'a', 'b'.. 'd'
+        var current_max = h[keys[i]];
+        if (current_max > max) {
+            max = current_max;
+            mcw = keys[i];
+        }
+    }
+    
+    // if multiple "most common" words, this function will return the first one, going left to right
+    return mcw;
+}
+
+function draw(h) {
+	var mwl = 0;  // max word length
+	var keys_html = '';
+	var bars_html = '';
+	var keys = Object.keys(h);
+	var mcw = most_common_word(h);
+	for (var i in keys) {
+		var key = keys[i];
+		var val = h[key];
+		if (key.length > mwl) mwl = key.length;
+		var bars_class = (key === mcw) ? 'bar max-bar' : 'bar';
+		keys_html += '<div class="key">' + key + '</div>';
+		bars_html += '<div class="' + bars_class + '" style="width:' + 50 * val + 'px">' + val + '</div><br />';
+	}
+	$('#keys').empty().append(keys_html);
+	$('#bars').empty().append(bars_html);
+}
+
+function refresh_graph() {
+	var input_str = $('input[type=text]').val();
+	var order = $('input:radio[name=sort]:checked').val();
+	var hash = generate_hash(input_str, order);
+	draw(hash);
+}
+</script>
+</head>
+
+<body>
+<form>
+	Please change the text below and the bar graph will automatically update:<br />
+	<input type="text" style="width:800px;" value="I like pizza. Who doesn't like pizza? Pizza is awesome." /><br /><br />
+	Sort by: <br />
+	<input type="radio" name="sort" value="min-max" /># occurrences: Ascending<br />
+	<input type="radio" name="sort" value="max-min" /># occurrences: Descending<br />
+	<input type="radio" name="sort" value="a-z" />A-Z<br />
+	<input type="radio" name="sort" value="z-a" />Z-A<br />
+	<input type="radio" name="sort" value="default" checked="checked" />Default (first occurrence of each word, going left to right)
+</form>
+<div id="graph">
+	<div id="keys">
+	</div>
+	<div id="bars">
+	</div>
+</div>
+
+<script>
+	$(function () {
+		refresh_graph();
+	});
+	
+	$('input[type=radio]').on('change', function () {
+		refresh_graph();
+	});
+
+	$('input[type=text]').on("change paste keyup", function () {
+		refresh_graph();
+	});
+</script>
+</body>
+</html>
